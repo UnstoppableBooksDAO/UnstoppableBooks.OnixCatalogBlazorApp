@@ -24,11 +24,12 @@ namespace OnixCatalogBlazorApp.Services
                 foreach (OnixProduct tempProduct in parser)
                 {
                     var tempBook =
-                        new BookItem() { Ean = (tempProduct.EAN > 0) ? Convert.ToString(tempProduct.EAN) : String.Empty
+                        new BookItem() { Ean = tempProduct.EAN
                                          , Title = tempProduct.Title
                                          , Author = tempProduct.PrimaryAuthor.OnixKeyNames 
                                          , Price = tempProduct.USDRetailPrice?.PriceAmountNum
                                          , Publisher = tempProduct.PublisherName
+                                         , IsPublished = !String.IsNullOrEmpty(tempProduct.PublisherName)
                                          , PrimaryBISAC = tempProduct.BisacCategoryCode.IsMainSubject() ? 
                                                             tempProduct.BisacCategoryCode.MainSubject : 
                                                             tempProduct.BisacCategoryCode.SubjectCode
