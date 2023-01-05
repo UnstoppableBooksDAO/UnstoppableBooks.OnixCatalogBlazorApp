@@ -2,16 +2,34 @@
 {
     public class BookItem
     {
-        public string? Ean;
+        public long Ean { get; set; }
 
-        public string? Title;
+        public string? Title { get; set; }
 
-        public string? Author;
+        public string? Author { get; set; }
 
-        public decimal? Price;
+        public decimal? Price { get; set; }
 
-        public string? Publisher;
+        public string? PrimaryBISAC { get; set; }
 
-        public string? PrimaryBISAC;
+        public bool IsPublished { get; set; }
+
+        public string? Publisher { get; set; }
+
+        public DateTime DateCreated { get; set; }
+
+        public BookItem()
+        {
+            Ean         = 0;
+            IsPublished = false;
+            DateCreated = DateTime.Now;
+        }
+
+        public BookItem(long id, bool isPublished, DateTime dateCreated)
+        {
+            Ean         = id;
+            IsPublished = isPublished;
+            DateCreated = dateCreated;
+        }
     }
 }
