@@ -7,6 +7,7 @@ namespace OnixCatalogBlazorApp.Services
         List<BookItem> GetBooks();
         BookItem GetBook(long ean);
         BookItem GetBook(string title);
+        List<BookItem> Add(string onixContent);
         List<BookItem> Add(BookItem bookItem);
         List<BookItem> Delete(long ean);
         List<BookItem> Delete(string title);

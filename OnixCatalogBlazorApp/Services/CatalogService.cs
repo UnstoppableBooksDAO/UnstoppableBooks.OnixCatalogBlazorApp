@@ -33,6 +33,15 @@ namespace OnixCatalogBlazorApp.Services
             return _bookItems.First(x => x.Title == title);
         }
 
+        public List<BookItem> Add(string onixContent)
+        {
+            var newBookItems = _fileService.ReadFromFile(onixContent);
+
+            _bookItems.AddRange(newBookItems);
+
+            return _bookItems;
+        }
+
         public List<BookItem> Add(BookItem bookItem)
         {
             _bookItems.Add(bookItem);
