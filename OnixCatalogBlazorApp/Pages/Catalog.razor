@@ -2,9 +2,157 @@
 
 @using OnixCatalogBlazorApp.Services
 @using OnixCatalogBlazorApp.Models
+@inject ICatalogService CatalogService
 
 <h1>Catalog</h1>
 
-@code {
+@if (books == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!books.Any())
+{
+    <p><em>No books exist.  Please add some.</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Remove</th>
+                <th>
+                    <span class="sort-link" @onclick=@(() => SortTable("DateCreated"))>Date</span>
+                    <span>@(GetSortStyle("DateCreated"))</span>
+                </th>
+                <th>
+                    <span class="sort-link" @onclick=@(() => SortTable("Title"))>Title</span>
+                    <span>@(GetSortStyle("Title"))</span>
+                </th>
+                <th>
+                    <span class="sort-link" @onclick=@(() => SortTable("PrimaryBISAC"))>Primary BISAC</span>
+                    <span>@(GetSortStyle("PrimaryBISAC"))</span>
+                </th>
+                <th>Is Published</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in books)
+            {
+            <tr>
+                <td><button @onclick="(() => RemoveBook(item?.Title ?? string.Empty))"><i class="oi oi-trash"></i></button></td>
+                <td>@item.DateCreated</td>
+                <td>@item.Title</td>
+                <td>@item.PrimaryBISAC</td>
+                <td>
+                    @if (item.IsPublished)
+                    {
+                        <input type=checkbox checked />
+                    }
+                    else
+                    {
+                        <input type=checkbox />
+                    }
+                </td>
+            </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (books != null)
+{
+    <InputFile OnChange="@LoadFiles" multiple />
+}
+
+@code{
+
+    private const long maxFileSize     = 1024 * 1000;
+    private const  int maxAllowedFiles = 3;
+
+    List<BookItem> books = new List<BookItem>();
+
+    private bool   _isSortedAscending;
+    private string _currentSortColumn;
+
+    /// <summary>
+    /// This method is responsible for loading the initial data the page requires.  We store this sample data
+    /// in a JSON file.
+    /// </summary>
+    /// <returns></returns>
+    protected override void OnInitialized()
+    {
+        books = CatalogService.GetBooks();
+    }
+
+    private async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles(maxAllowedFiles))
+        {
+            try
+            {
+                using (var readStream = file.OpenReadStream(maxFileSize))
+                {
+                    var streamReader = new System.IO.StreamReader(readStream);
+
+                    var onixContent = await streamReader.ReadToEndAsync();
+
+                    books = CatalogService.Add(onixContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                // NOTE: Log this message
+            }
+        }
+    }
+
+    private void RemoveBook(string title)
+    {
+        if (!String.IsNullOrEmpty(title))
+        {
+            books = CatalogService.Delete(title);
+        }
+    }
+
+    private string GetSortStyle(string columnName)
+    {
+        if (_currentSortColumn != columnName)
+        {
+            return string.Empty;
+        }
+        if (_isSortedAscending)
+        {
+            return "▲";
+        }
+        else
+        {
+            return "▼";
+        }
+    }
+
+    private void SortTable(string columnName)
+    {
+        if (columnName != _currentSortColumn)
+        {
+            //We need to force order by descending on the new column
+            books = books.OrderBy(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
+            _currentSortColumn = columnName;
+            _isSortedAscending = true;
+
+        }
+        else //Sorting against same column but in different direction
+        {
+            if (_isSortedAscending)
+            {
+                books = books.OrderByDescending(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
+            }
+            else
+            {
+                books = books.OrderBy(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
+            }
+
+            _isSortedAscending = !_isSortedAscending;
+        }
+    }
 
 }
