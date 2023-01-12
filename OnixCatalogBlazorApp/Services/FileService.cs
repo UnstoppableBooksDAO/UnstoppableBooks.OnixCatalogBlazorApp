@@ -19,7 +19,7 @@ namespace OnixCatalogBlazorApp.Services
         {
             var books = new List<BookItem>();
 
-            using (OnixParser parser = new OnixParser(fileContents, false))
+            using (OnixParser parser = new OnixParser(fileContents, false, false))
             {
                 foreach (OnixProduct tempProduct in parser)
                 {
