@@ -1,8 +1,12 @@
 ﻿@page "/catalog"
 
-@using OnixCatalogBlazorApp.Services
+@using Newtonsoft.Json;
+@using OnixCatalogBlazorApp.Extensions
 @using OnixCatalogBlazorApp.Models
+@using OnixCatalogBlazorApp.Services
+
 @inject ICatalogService CatalogService
+@inject OnixCatalogBlazorApp.Proxy.CacheStorageProxy CacheStorageProxy
 
 <h1>Catalog</h1>
 
@@ -74,14 +78,41 @@ else
     private bool   _isSortedAscending;
     private string _currentSortColumn;
 
-    /// <summary>
-    /// This method is responsible for loading the initial data the page requires.  We store this sample data
-    /// in a JSON file.
-    /// </summary>
-    /// <returns></returns>
     protected override void OnInitialized()
     {
         books = CatalogService.GetBooks();
+    }
+
+    protected override async Task OnInitializedAsync() 
+    {
+        var keys = await CacheStorageProxy.GetAllKeysAsync();
+        foreach (var key in keys)
+        {
+            var message = new HttpRequestMessage(HttpMethod.Get, key);
+
+            var book = await CacheStorageProxy.GetAsync(message);
+
+            if (book != null)
+            {
+                BookItem bookItem = JsonConvert.DeserializeObject<BookItem>(book);
+                if (bookItem != null)
+                {
+                    books.Add(bookItem);
+                }
+            }
+        }
+    }
+
+    private HttpRequestMessage GenerateGetRequestMessage(BookItem bookItem)
+    {
+        return GenerateGetRequestMessage(bookItem?.Title ?? String.Empty);
+    }
+
+    private HttpRequestMessage GenerateGetRequestMessage(string title)
+    {
+        var bookUrl = String.Format(@"/onix-catalog/{0}.json", title?.Replace(@" ", @"_"));
+
+        return new HttpRequestMessage(HttpMethod.Get, bookUrl);
     }
 
     private async Task LoadFiles(InputFileChangeEventArgs e)
@@ -97,6 +128,16 @@ else
                     var onixContent = await streamReader.ReadToEndAsync();
 
                     books = CatalogService.Add(onixContent);
+
+                    foreach (var book in books)
+                    {
+                        var message = GenerateGetRequestMessage(book);
+
+                        var response = new HttpResponseMessage(System.Net.HttpStatusCode.Created);
+                        response.Content = new StringContent(book.Serialize());
+
+                        await CacheStorageProxy.StoreAsync(message, response);
+                    }
                 }
             }
             catch (Exception ex)
@@ -106,10 +147,13 @@ else
         }
     }
 
-    private void RemoveBook(string title)
+    private async Task RemoveBook(string title)
     {
         if (!String.IsNullOrEmpty(title))
         {
+            var message = GenerateGetRequestMessage(title);
+            await CacheStorageProxy.RemoveAsync(message);
+
             books = CatalogService.Delete(title);
         }
     }
