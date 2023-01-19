@@ -26,7 +26,7 @@ namespace OnixCatalogBlazorApp.Services
                     var tempBook =
                         new BookItem() { Ean = tempProduct.EAN
                                          , Title = tempProduct.Title
-                                         , Author = tempProduct.PrimaryAuthor.OnixKeyNames 
+                                         , AuthorName = tempProduct.PrimaryAuthor.OnixKeyNames 
                                          , Price = tempProduct.USDRetailPrice?.PriceAmountNum
                                          , Publisher = tempProduct.PublisherName
                                          , IsPublished = !String.IsNullOrEmpty(tempProduct.PublisherName)

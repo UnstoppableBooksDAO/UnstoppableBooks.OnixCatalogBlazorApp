@@ -6,7 +6,9 @@
 
         public string? Title { get; set; }
 
-        public string? Author { get; set; }
+        public string? AuthorName { get; set; }
+
+        public string? AuthorEthereumId { get; set; }
 
         public decimal? Price { get; set; }
 
