@@ -1,4 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text;
+using System.Xml;
+using System.Xml.Linq;
+using Newtonsoft.Json;
 
 using OnixData.Version3;
 using OnixData.Version3.Names;
@@ -19,10 +22,7 @@ namespace OnixCatalogBlazorApp.Extensions
 	<Product>
 		<DescriptiveDetail>
 			<ProductForm>{1}</ProductForm>
-            <Title language=""eng"">
-                <TitleType>01</TitleType>
-                <TitleText><![CDATA[{2}]]></TitleText>
-            </Title>
+            {2}
             {3}
 			<Language>
 				<LanguageRole>01</LanguageRole>
@@ -50,115 +50,135 @@ namespace OnixCatalogBlazorApp.Extensions
          ";
 
         public const string Onix3HeaderFormat =
-@"
-	<Header>
+@"	<Header>
 		<Sender>
             {0}
 			{1}
 		</Sender>
 		<SentDateTime>{2}</SentDateTime>
 		<MessageNote><![CDATA[{3}]]></MessageNote>
-	</Header>	
-";
+	</Header>";
 
         public const string Onix3SenderIdFormat =
-@"
-			<SenderIdentifier>
+@"			<SenderIdentifier>
 				<SenderIDType>{0}</SenderIDType>
 			    <IDTypeName>{1}</IDTypeName>
 				<IDValue>{2}</IDValue>
-			</SenderIdentifier>
-";
+			</SenderIdentifier>";
 
         public const string Onix3SenderNameFormat =
-@"
-            <SenderName>{0}</SenderName>
-";
+@"            <SenderName>{0}</SenderName>";
+
+		public const string Onix3TitleFormat =
+@"            <Title language=""eng"">
+                <TitleType>01</TitleType>
+                <TitleText><![CDATA[{0}]]></TitleText>
+            </Title>";
 
         public const string Onix3BasicCntbFormat =
-@"
-			<Contributor>
+@"			<Contributor>
 				<ContributorRole>A01</ContributorRole>
                 {0}
                 {1}
-			</Contributor>
-";
+			</Contributor>";
 
         public const string Onix3BasicCntbIdFormat =
-@"
-				<NameIdentifier>
+@"				<NameIdentifier>
 					<NameIDType>{0}</NameIDType>
 					<IDTypeName>{1}</IDTypeName>
 					<IDValue>{2}</IDValue>
-				</NameIdentifier>
-";
+				</NameIdentifier>";
 
         public const string Onix3BasicCntbNameFormat =
-@"
-				<NamesBeforeKey>{0}</NamesBeforeKey>
-				<KeyNames>{1}</KeyNames>
-";
+@"				<NamesBeforeKey>{0}</NamesBeforeKey>
+				<KeyNames>{1}</KeyNames>";
 
-        public const string Onix3BasicCntbPersonNameFormat =
-@"
-                <PersonName>{0}</PersonName>
-";
+		public const string Onix3BasicCntbPersonNameFormat =
+@"                <PersonName>{0}</PersonName>";
+
+		public static string CleanXml(this string xmlContent)
+        {
+			return xmlContent.Replace("\r\n", String.Empty).Replace("\t", "  ");
+		}
+
+		public static string PrettyPrintXml(this string xmlContent)
+        {
+			var prettyPrintBuilder = new StringBuilder();
+
+			var element = XElement.Parse(xmlContent);
+
+			var settings = new XmlWriterSettings();
+			settings.OmitXmlDeclaration = true;
+			settings.Indent = true;
+			settings.NewLineOnAttributes = true;
+
+			using (var xmlWriter = XmlWriter.Create(prettyPrintBuilder, settings))
+			{
+				element.Save(xmlWriter);
+			}
+
+			return prettyPrintBuilder.ToString();
+		}
 
 		public static string Serialize(this BookItem bookItem)
         {
 			return JsonConvert.SerializeObject(bookItem);
 		}
 
-        public static string ToSimpleOnixString(this BookItem bookItem, string headerMsgNote = null)
-        {
-            var header      = String.Empty;
-            var contribList = String.Empty;
+		public static string ToSimpleOnixString(this BookItem bookItem, string headerMsgNote = null)
+		{
+			var header      = String.Empty;
+			var title       = String.Empty;
+			var contribList = String.Empty;
 
-            var cntbIds   = String.Empty;
-            var cntbNames = String.Empty;
+			var cntbIds   = String.Empty;
+			var cntbNames = String.Empty;
 
-            var senderIds   = String.Empty;
-            var senderNames = String.Empty;
-				
-            if (!String.IsNullOrEmpty(bookItem?.AuthorEthereumId))
-            {
-                cntbIds = String.Format(Onix3BasicCntbIdFormat
-                                        , OnixNameIdentifier.CONST_NAME_TYPE_ID_PROP
-                                        , OnixIdTypeNameDID
-                                        , String.Format("did:ethr:{0}", bookItem.AuthorEthereumId));
+			var senderIds   = String.Empty;
+			var senderNames = String.Empty;
 
-                senderIds = String.Format(Onix3SenderIdFormat
-                                          , OnixNameIdentifier.CONST_NAME_TYPE_ID_PROP
-                                          , OnixIdTypeNameDID
-                                          , String.Format("did:ethr:{0}", bookItem.AuthorEthereumId));
-            }
+			if (!String.IsNullOrEmpty(bookItem?.AuthorEthereumId))
+			{
+				cntbIds = String.Format(Onix3BasicCntbIdFormat
+										, OnixNameIdentifier.CONST_NAME_TYPE_ID_PROP
+										, OnixIdTypeNameDID
+										, String.Format("did:ethr:{0}", bookItem.AuthorEthereumId)).CleanXml();
 
-            if (!String.IsNullOrEmpty(bookItem?.AuthorName))
-            {
-                cntbNames   = String.Format(Onix3BasicCntbPersonNameFormat, bookItem.AuthorName);
-                senderNames = String.Format(Onix3SenderNameFormat, bookItem.AuthorName);
-            }
+				senderIds = String.Format(Onix3SenderIdFormat
+										  , OnixNameIdentifier.CONST_NAME_TYPE_ID_PROP
+										  , OnixIdTypeNameDID
+										  , String.Format("did:ethr:{0}", bookItem.AuthorEthereumId)).CleanXml();
+			}
 
-            header = String.Format(Onix3HeaderFormat
-                                    , senderIds
-                                    , senderNames
-                                    , DateTime.Now.ToString("YYYYMMDD")
-                                    , headerMsgNote ?? String.Empty);
+			if (!String.IsNullOrEmpty(bookItem?.AuthorName))
+			{
+				cntbNames   = String.Format(Onix3BasicCntbPersonNameFormat, bookItem.AuthorName).CleanXml();
+				senderNames = String.Format(Onix3SenderNameFormat, bookItem.AuthorName).CleanXml();
+			}
 
-            contribList = String.Format(Onix3BasicCntbFormat, cntbIds, cntbNames);
+			title = String.Format(Onix3TitleFormat, bookItem?.Title ?? String.Empty).CleanXml();
 
-            return String.Format(Onix3BasicMessageFormat
-                                 , header
-                                 , "DG"
-                                 , bookItem?.Title
-                                 , contribList
-                                 , String.Empty
-                                 , bookItem?.PrimaryBISAC
-                                 , bookItem?.Publisher
-                                 , String.Empty
-                                );
+			header = String.Format(Onix3HeaderFormat
+									, senderIds
+									, senderNames
+									, DateTime.Now.ToString("YYYYMMDD")
+									, headerMsgNote ?? String.Empty).CleanXml();
 
-        }
+			contribList = String.Format(Onix3BasicCntbFormat, cntbIds, cntbNames).CleanXml();
+
+			var onixContent = String.Format(Onix3BasicMessageFormat
+											, header
+											, "DG"
+											, title
+											, contribList
+											, String.Empty
+											, bookItem?.PrimaryBISAC
+											, bookItem?.Publisher
+											, String.Empty
+										   );
+
+			return onixContent.CleanXml().PrettyPrintXml();
+		}
 
         public static string ToSimpleOnixString(this OnixProduct onixProduct, string headerMsgNote = null)
         {
