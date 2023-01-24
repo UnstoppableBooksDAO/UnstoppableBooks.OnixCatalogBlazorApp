@@ -3,6 +3,10 @@ using System.Xml;
 using System.Xml.Linq;
 using Newtonsoft.Json;
 
+using Nethereum.Util;
+using Nethereum.Signer;
+using Nethereum.Hex.HexConvertors.Extensions;
+
 using OnixData.Version3;
 using OnixData.Version3.Names;
 
@@ -16,8 +20,7 @@ namespace OnixCatalogBlazorApp.Extensions
 
         public const string Onix3BasicMessageFormat = 
 @"<?xml version=""1.0"" encoding=""UTF-8""?>
-<ONIXMessage release=""3.0"" xmlns=""http://ns.editeur.org/onix/3.0/reference""
-			 xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"">
+<ONIXMessage release=""3.0"">
     {0}
 	<Product>
 		<DescriptiveDetail>
@@ -70,10 +73,16 @@ namespace OnixCatalogBlazorApp.Extensions
 @"            <SenderName>{0}</SenderName>";
 
 		public const string Onix3TitleFormat =
-@"            <Title language=""eng"">
-                <TitleType>01</TitleType>
-                <TitleText><![CDATA[{0}]]></TitleText>
-            </Title>";
+@"			<TitleDetail>
+				<TitleType>01</TitleType>
+				<TitleElement>
+					<SequenceNumber>1</SequenceNumber>
+					<TitleElementLevel>01</TitleElementLevel>
+					<NoPrefix/>
+					<TitleWithoutPrefix textcase=""01""><![CDATA[{0}]]></TitleWithoutPrefix>
+				</TitleElement>
+			</TitleDetail>
+";
 
         public const string Onix3BasicCntbFormat =
 @"			<Contributor>
@@ -96,6 +105,15 @@ namespace OnixCatalogBlazorApp.Extensions
 		public const string Onix3BasicCntbPersonNameFormat =
 @"                <PersonName>{0}</PersonName>";
 
+		private const string SignedProductListMessageNoteFormat =
+@"The Product list of this message was signed with the private key of did:ethr:{0}, resulting in the signature({1}).";
+
+		private const string StartProductRefTag   = "<Product";
+		private const string StartProductShortTag = "<product";
+
+		private const string EndProductRefTag   = "</Product>";
+		private const string EndProductShortTag = "</product>";
+
 		public static string CleanXml(this string xmlContent)
         {
 			return xmlContent.Replace("\r\n", String.Empty).Replace("\t", "  ");
@@ -111,6 +129,46 @@ namespace OnixCatalogBlazorApp.Extensions
 			var bookUrl = String.Format(@"/onix-catalog/{0}.json", title?.Replace(@" ", @"_"));
 
 			return new HttpRequestMessage(HttpMethod.Get, bookUrl);
+		}
+
+		public static string GenerateSignedMessageNote(this string onixContent, string publicKey, string privateKey)
+		{
+			string messageNote = String.Empty;
+
+			if (!String.IsNullOrEmpty(onixContent))
+			{
+				var startTag = String.Empty;
+				var endTag   = String.Empty;
+
+				if (onixContent.Contains(StartProductRefTag) && onixContent.Contains(EndProductRefTag))
+                {
+					startTag = StartProductRefTag;
+					endTag   = EndProductRefTag;
+                }
+				else if (onixContent.Contains(StartProductShortTag) && onixContent.Contains(EndProductShortTag))
+				{
+					startTag = StartProductShortTag;
+					endTag   = EndProductShortTag;
+				}
+
+				if (!String.IsNullOrEmpty(startTag))
+                {
+					var productListIdx = onixContent.IndexOf(startTag);
+					var productListLen = (onixContent.IndexOf(endTag) - productListIdx) + endTag.Length;
+
+					string productList = onixContent.Substring(productListIdx, productListLen);
+
+					var signer = new EthereumMessageSigner();
+
+					var signature = signer.EncodeUTF8AndSign(productList, new EthECKey(privateKey));
+
+					messageNote =
+						String.Format(SignedProductListMessageNoteFormat, publicKey, signature);
+				}
+
+			}
+
+			return messageNote;
 		}
 
 		public static string PrettyPrintXml(this string xmlContent)
