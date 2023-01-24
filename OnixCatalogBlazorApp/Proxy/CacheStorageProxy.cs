@@ -31,6 +31,13 @@ public class CacheStorageProxy : IAsyncDisposable
 
     #region create a new method for each operation
 
+    public async Task DownloadFile(string filename, string content)
+    {
+        await WaitForReference();
+
+        await _accessorJsRef.Value.InvokeVoidAsync("saveFile", filename, content);
+    }
+
     public async Task StoreAsync(HttpRequestMessage requestMessage, HttpResponseMessage responseMessage) 
     {
         await WaitForReference();
