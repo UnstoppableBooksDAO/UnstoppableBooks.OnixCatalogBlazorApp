@@ -101,6 +101,18 @@ namespace OnixCatalogBlazorApp.Extensions
 			return xmlContent.Replace("\r\n", String.Empty).Replace("\t", "  ");
 		}
 
+		public static HttpRequestMessage GenerateGetRequestMessage(this BookItem bookItem)
+		{
+			return GenerateGetRequestMessage(bookItem?.Title ?? String.Empty);
+		}
+
+		public static HttpRequestMessage GenerateGetRequestMessage(this string title)
+		{
+			var bookUrl = String.Format(@"/onix-catalog/{0}.json", title?.Replace(@" ", @"_"));
+
+			return new HttpRequestMessage(HttpMethod.Get, bookUrl);
+		}
+
 		public static string PrettyPrintXml(this string xmlContent)
         {
 			var prettyPrintBuilder = new StringBuilder();
@@ -108,8 +120,8 @@ namespace OnixCatalogBlazorApp.Extensions
 			var element = XElement.Parse(xmlContent);
 
 			var settings = new XmlWriterSettings();
-			settings.OmitXmlDeclaration = true;
-			settings.Indent = true;
+			settings.OmitXmlDeclaration  = true;
+			settings.Indent              = true;
 			settings.NewLineOnAttributes = true;
 
 			using (var xmlWriter = XmlWriter.Create(prettyPrintBuilder, settings))

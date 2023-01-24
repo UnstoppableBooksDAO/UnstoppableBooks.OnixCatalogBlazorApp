@@ -73,9 +73,11 @@ else
     private const long maxFileSize     = 1024 * 1000;
     private const  int maxAllowedFiles = 3;
 
+    private static bool _initializedCatalog = false;
+
     List<BookItem> books = new List<BookItem>();
 
-    private bool   _isSortedAscending;
+    private bool   _isSortedAscending  = false;
     private string _currentSortColumn;
 
     protected override void OnInitialized()
@@ -85,34 +87,27 @@ else
 
     protected override async Task OnInitializedAsync() 
     {
-        var keys = await CacheStorageProxy.GetAllKeysAsync();
-        foreach (var key in keys)
+        if (!_initializedCatalog)
         {
-            var message = new HttpRequestMessage(HttpMethod.Get, key);
+            var keys = await CacheStorageProxy.GetAllKeysAsync();
+            foreach (var key in keys) {
 
-            var book = await CacheStorageProxy.GetAsync(message);
+                var message = new HttpRequestMessage(HttpMethod.Get, key);
 
-            if (book != null)
-            {
-                BookItem bookItem = JsonConvert.DeserializeObject<BookItem>(book);
-                if (bookItem != null)
+                var book = await CacheStorageProxy.GetAsync(message);
+
+                if (book != null)
                 {
-                    books.Add(bookItem);
+                    BookItem bookItem = JsonConvert.DeserializeObject<BookItem>(book);
+                    if (bookItem != null)
+                    {
+                        books.Add(bookItem);
+                    }
                 }
             }
+
+            _initializedCatalog = true;
         }
-    }
-
-    private HttpRequestMessage GenerateGetRequestMessage(BookItem bookItem)
-    {
-        return GenerateGetRequestMessage(bookItem?.Title ?? String.Empty);
-    }
-
-    private HttpRequestMessage GenerateGetRequestMessage(string title)
-    {
-        var bookUrl = String.Format(@"/onix-catalog/{0}.json", title?.Replace(@" ", @"_"));
-
-        return new HttpRequestMessage(HttpMethod.Get, bookUrl);
     }
 
     private async Task LoadFiles(InputFileChangeEventArgs e)
@@ -131,7 +126,7 @@ else
 
                     foreach (var book in books)
                     {
-                        var message = GenerateGetRequestMessage(book);
+                        var message = book.GenerateGetRequestMessage();
 
                         var response = new HttpResponseMessage(System.Net.HttpStatusCode.Created);
                         response.Content = new StringContent(book.Serialize());
@@ -151,7 +146,7 @@ else
     {
         if (!String.IsNullOrEmpty(title))
         {
-            var message = GenerateGetRequestMessage(title);
+            var message = title.GenerateGetRequestMessage();
             await CacheStorageProxy.RemoveAsync(message);
 
             books = CatalogService.Delete(title);
