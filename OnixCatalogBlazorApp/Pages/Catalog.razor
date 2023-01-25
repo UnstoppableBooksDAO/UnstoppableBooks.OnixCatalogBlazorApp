@@ -10,11 +10,11 @@
 
 <h1>Catalog</h1>
 
-@if (books == null)
+@if (_books == null)
 {
     <p><em>Loading...</em></p>
 }
-else if (!books.Any())
+else if (!_books.Any())
 {
     <p><em>No books exist.  Please add some.</em></p>
 }
@@ -40,7 +40,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var item in books)
+            @foreach (var item in _books)
             {
             <tr>
                 <td><button @onclick="(() => RemoveBook(item?.Title ?? string.Empty))"><i class="oi oi-trash"></i></button></td>
@@ -63,7 +63,7 @@ else
     </table>
 }
 
-@if (books != null)
+@if (_books != null)
 {
     <InputFile OnChange="@LoadFiles" multiple />
 }
@@ -75,14 +75,14 @@ else
 
     private static bool _initializedCatalog = false;
 
-    List<BookItem> books = new List<BookItem>();
+    List<BookItem> _books = new List<BookItem>();
 
     private bool   _isSortedAscending  = false;
     private string _currentSortColumn;
 
     protected override void OnInitialized()
     {
-        books = CatalogService.GetBooks();
+        _books = CatalogService.GetBooks();
     }
 
     protected override async Task OnInitializedAsync() 
@@ -101,7 +101,7 @@ else
                     BookItem bookItem = JsonConvert.DeserializeObject<BookItem>(book);
                     if (bookItem != null)
                     {
-                        books.Add(bookItem);
+                        _books.Add(bookItem);
                     }
                 }
             }
@@ -122,9 +122,9 @@ else
 
                     var onixContent = await streamReader.ReadToEndAsync();
 
-                    books = CatalogService.Add(onixContent);
+                    _books = CatalogService.Add(onixContent);
 
-                    foreach (var book in books)
+                    foreach (var book in _books)
                     {
                         var message = book.GenerateGetRequestMessage();
 
@@ -149,7 +149,7 @@ else
             var message = title.GenerateGetRequestMessage();
             await CacheStorageProxy.RemoveAsync(message);
 
-            books = CatalogService.Delete(title);
+            _books = CatalogService.Delete(title);
         }
     }
 
@@ -174,7 +174,7 @@ else
         if (columnName != _currentSortColumn)
         {
             //We need to force order by descending on the new column
-            books = books.OrderBy(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
+            _books = _books.OrderBy(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
             _currentSortColumn = columnName;
             _isSortedAscending = true;
 
@@ -183,11 +183,11 @@ else
         {
             if (_isSortedAscending)
             {
-                books = books.OrderByDescending(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
+                _books = _books.OrderByDescending(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
             }
             else
             {
-                books = books.OrderBy(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
+                _books = _books.OrderBy(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
             }
 
             _isSortedAscending = !_isSortedAscending;
