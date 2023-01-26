@@ -17,6 +17,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Nethereum.Metamask.Blazor" Version="4.12.0" />
     <PackageReference Include="Nethereum.Signer" Version="4.12.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageReference Include="ONIX-Data.Standard" Version="0.5.41" />

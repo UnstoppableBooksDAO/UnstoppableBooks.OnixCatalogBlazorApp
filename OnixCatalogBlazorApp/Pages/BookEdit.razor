@@ -1,0 +1,137 @@
+﻿@page "/bookedit"
+
+@using OnixCatalogBlazorApp.Extensions
+@using OnixCatalogBlazorApp.Models
+@using OnixCatalogBlazorApp.Services
+
+@inject OnixCatalogBlazorApp.Proxy.CacheStorageProxy CacheStorageProxy
+@inject ICatalogService CatalogService
+
+<h1>BookEdit</h1>
+
+<EditForm Model="@_bookItem" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <p>
+        <label>
+            Title:
+            <InputText @bind-Value="_bookItem.Title" />
+        </label>
+    </p>
+    <p>
+        <label>
+            EAN:
+            <InputNumber @bind-Value="_bookItem.Ean" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Author Name (Full):
+            <InputText @bind-Value="_bookItem.AuthorName" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Author Ethereum DID:
+            <InputText @bind-Value="_bookItem.AuthorEthereumId" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Price:
+            <InputNumber @bind-Value="_bookItem.Price" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Primary BISAC:
+            <InputText @bind-Value="_bookItem.PrimaryBISAC" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Is Published:
+            <InputCheckbox @bind-Value="_bookItem.IsPublished" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Publisher:
+            <InputText @bind-Value="_bookItem.Publisher" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Sign with Ethereum:
+            <InputCheckbox @bind-Value="_shouldSignWithMetamask" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Add to Catalog:
+            <InputCheckbox @bind-Value="_shouldAddToCatalog" />
+        </label>
+    </p>
+
+    <br/>
+
+    <button type="submit">Save</button>
+
+</EditForm>
+
+@code {
+
+    private BookItem _bookItem = new() { DateCreated = DateTime.UtcNow };
+
+    private string _selectedAccount = String.Empty;
+    private bool   _isEthereumAvailable { get; set; }
+
+    private bool _shouldSignWithMetamask = false;
+    private bool _shouldAddToCatalog     = false;
+
+    private async Task HandleValidSubmit()
+    {
+        string onixContent = _bookItem.ToSimpleOnixString();
+
+        if (_shouldSignWithMetamask)
+        {
+            var ethereumAddress = _bookItem.AuthorEthereumId;
+            var privateKey      = String.Empty;
+
+            if (String.IsNullOrEmpty(ethereumAddress))
+            {
+                ethereumAddress = "0x94618601FE6cb8912b274E5a00453949A57f8C1e";
+                privateKey      = "0x7580e7fb49df1c861f0050fae31c2224c6aba908e116b8da44ee8cd927b990b0";
+            }
+
+            string messageNote =
+                onixContent.GenerateSignedMessageNote(ethereumAddress, privateKey);
+
+            onixContent = _bookItem.ToSimpleOnixString(messageNote);
+        }
+
+        if (_shouldAddToCatalog) 
+        {
+            try
+            {
+                CatalogService.Add(onixContent.Replace("\n", ""));
+
+                var message = _bookItem.GenerateGetRequestMessage();
+
+                var response = new HttpResponseMessage(System.Net.HttpStatusCode.Created);
+                response.Content = new StringContent(_bookItem.Serialize());
+
+                await CacheStorageProxy.StoreAsync(message, response);
+            }
+            catch (Exception ex)
+            {
+                int x = 1;
+            }
+        }
+
+        await CacheStorageProxy.DownloadFile(_bookItem.Title?.Replace(" ", "_") + ".xml" ?? "sample.xml", 
+                                             onixContent);
+    }
+
+}
