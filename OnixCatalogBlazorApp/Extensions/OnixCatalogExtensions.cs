@@ -1,4 +1,7 @@
-﻿using System.Text;
+﻿using System;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 using Newtonsoft.Json;
@@ -131,54 +134,79 @@ namespace OnixCatalogBlazorApp.Extensions
 			return new HttpRequestMessage(HttpMethod.Get, bookUrl);
 		}
 
-		public static string GenerateSignedMessageNote(this string onixContent, string publicKey, string privateKey)
-		{
-			string messageNote = String.Empty;
+        public static string GenerateMessageNote(this string onixContent, string publicKey, string signature)
+        {
+            string messageNote = String.Empty;
 
-			if (!String.IsNullOrEmpty(onixContent))
-			{
-				var startTag = String.Empty;
-				var endTag   = String.Empty;
+            if (!String.IsNullOrEmpty(onixContent))
+            {
+                messageNote =
+                    String.Format(SignedProductListMessageNoteFormat, publicKey, signature);
+            }
 
-				if (onixContent.Contains(StartProductRefTag) && onixContent.Contains(EndProductRefTag))
+            return messageNote;
+        }
+
+        public static string GenerateSignedMessageNote(this string onixContent, string publicKey, string privateKey)
+        {
+            string messageNote = String.Empty;
+
+            if (!String.IsNullOrEmpty(onixContent))
+            {
+                string productList = onixContent.GetProductList();
+
+                var signer = new EthereumMessageSigner();
+
+                var signature = signer.EncodeUTF8AndSign(productList, new EthECKey(privateKey));
+
+                messageNote =
+                    String.Format(SignedProductListMessageNoteFormat, publicKey, signature);
+            }
+
+            return messageNote;
+        }
+
+        public static string GetProductList(this string onixContent)
+        {
+            string productList = String.Empty;
+
+            if (!String.IsNullOrEmpty(onixContent))
+            {
+                var startTag = String.Empty;
+                var endTag = String.Empty;
+
+                if (onixContent.Contains(StartProductRefTag) && onixContent.Contains(EndProductRefTag))
                 {
-					startTag = StartProductRefTag;
-					endTag   = EndProductRefTag;
+                    startTag = StartProductRefTag;
+                    endTag = EndProductRefTag;
                 }
-				else if (onixContent.Contains(StartProductShortTag) && onixContent.Contains(EndProductShortTag))
-				{
-					startTag = StartProductShortTag;
-					endTag   = EndProductShortTag;
-				}
-
-				if (!String.IsNullOrEmpty(startTag))
+                else if (onixContent.Contains(StartProductShortTag) && onixContent.Contains(EndProductShortTag))
                 {
-					var productListIdx = onixContent.IndexOf(startTag);
-					var productListLen = (onixContent.IndexOf(endTag) - productListIdx) + endTag.Length;
+                    startTag = StartProductShortTag;
+                    endTag = EndProductShortTag;
+                }
 
-					string productList = onixContent.Substring(productListIdx, productListLen);
+                if (!String.IsNullOrEmpty(startTag))
+                {
+                    var productListIdx = onixContent.IndexOf(startTag);
+                    var productListLen = (onixContent.IndexOf(endTag) - productListIdx) + endTag.Length;
 
-					var signer = new EthereumMessageSigner();
+                    productList = onixContent.Substring(productListIdx, productListLen);
+                }
 
-					var signature = signer.EncodeUTF8AndSign(productList, new EthECKey(privateKey));
+            }
 
-					messageNote =
-						String.Format(SignedProductListMessageNoteFormat, publicKey, signature);
-				}
+            return productList;
+        }
 
-			}
-
-			return messageNote;
-		}
-
-		public static string PrettyPrintXml(this string xmlContent)
+        public static string PrettyPrintXml(this string xmlContent)
         {
 			var prettyPrintBuilder = new StringBuilder();
 
 			var element = XElement.Parse(xmlContent);
 
 			var settings = new XmlWriterSettings();
-			settings.OmitXmlDeclaration  = true;
+			settings.OmitXmlDeclaration  = false;
 			settings.Indent              = true;
 			settings.NewLineOnAttributes = true;
 

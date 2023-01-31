@@ -2,26 +2,19 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="wwwroot\sample-data\ONIX3Sample_RefNames.xml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="6.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="6.0.10" PrivateAssets="all" />
-    <PackageReference Include="Nerdbank.GitVersioning" Version="3.5.119">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Nethereum.KeyStore" Version="4.12.0" />
-    <PackageReference Include="Nethereum.Metamask.Blazor" Version="4.12.0" />
-    <PackageReference Include="Nethereum.Signer" Version="4.12.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
-    <PackageReference Include="ONIX-Data.Standard" Version="0.5.41" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="9.4.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="6.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="6.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="6.0.2" PrivateAssets="all" />
+    <PackageReference Include="Nethereum.Metamask.Blazor" Version="4.6.1" />
+    <PackageReference Include="Nethereum.UI" Version="4.6.1" />
+	<PackageReference Include="Nethereum.Web3" Version="4.6.1" />
+	<PackageReference Include="ONIX-Data.Standard" Version="0.5.41" />
+    <PackageReference Include="System.Net.Http.Json" Version="6.0.0" />
   </ItemGroup>
 
 </Project>

@@ -1,19 +1,59 @@
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Nethereum.UI;
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using Nethereum.Metamask.Blazor;
+using Nethereum.Metamask;
+using FluentValidation;
+using Microsoft.AspNetCore.Components.Authorization;
+using Nethereum.Blazor;
 
 using OnixCatalogBlazorApp;
 using OnixCatalogBlazorApp.Proxy;
 using OnixCatalogBlazorApp.Services;
 
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-builder.RootComponents.Add<App>("#app");
-builder.RootComponents.Add<HeadOutlet>("head::after");
+namespace OnixCatalogBlazorApp
+{
+    public class Program
+    {
+        public static async Task Main(string[] args)
+        {
+            var builder = WebAssemblyHostBuilder.CreateDefault(args);
+            builder.RootComponents.Add<App>("#app");
+            builder.Services.AddAuthorizationCore();
 
-builder.Services.AddScoped<CacheStorageProxy>();
+            builder.Services.AddScoped<CacheStorageProxy>();
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-builder.Services.AddTransient<IFileService, FileService>();
-builder.Services.AddScoped<ICatalogService, CatalogService>();
+            builder.Services.AddTransient<IFileService, FileService>();
+            builder.Services.AddScoped<ICatalogService, CatalogService>();
 
-await builder.Build().RunAsync();
+
+            builder.Services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+            builder.Services.AddSingleton<IMetamaskInterop, MetamaskBlazorInterop>();
+            builder.Services.AddSingleton<MetamaskInterceptor>();
+            builder.Services.AddSingleton<MetamaskHostProvider>();
+            
+            //Add metamask as the selected ethereum host provider
+            builder.Services.AddSingleton(services =>
+            {
+                var metamaskHostProvider = services.GetService<MetamaskHostProvider>();
+                var selectedHostProvider = new SelectedEthereumHostProviderService();
+                selectedHostProvider.SetSelectedEthereumHostProvider(metamaskHostProvider);
+                return selectedHostProvider;
+            });
+               
+            
+            builder.Services.AddSingleton<AuthenticationStateProvider, EthereumAuthenticationStateProvider>();
+
+            await builder.Build().RunAsync();
+        }
+    }
+}

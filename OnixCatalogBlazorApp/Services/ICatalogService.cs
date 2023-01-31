@@ -1,4 +1,6 @@
-﻿using OnixCatalogBlazorApp.Models;
+﻿using System.Collections.Generic;
+
+using OnixCatalogBlazorApp.Models;
 
 namespace OnixCatalogBlazorApp.Services
 {
