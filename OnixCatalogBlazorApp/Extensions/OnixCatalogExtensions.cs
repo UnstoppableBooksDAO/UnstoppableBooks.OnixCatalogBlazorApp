@@ -199,7 +199,23 @@ namespace OnixCatalogBlazorApp.Extensions
             return productList;
         }
 
-        public static string PrettyPrintXml(this string xmlContent)
+		public static string PrepareFinalOnixMessage(this string onixContent)
+		{
+            var firstNewlineIdx = -1;
+
+            if ((firstNewlineIdx = onixContent.IndexOf("\n")) > 0)
+            {
+				var secondNewlineIdx = onixContent.IndexOf("\n", firstNewlineIdx+1);
+				if (secondNewlineIdx > 0)
+				{
+                    onixContent = onixContent.Remove(secondNewlineIdx, 1);
+                }
+            }
+
+            return onixContent;
+        }
+
+        public static string PrettyPrintXml(this string xmlContent, bool removeFirstNewLine = true)
         {
 			var prettyPrintBuilder = new StringBuilder();
 
@@ -275,7 +291,7 @@ namespace OnixCatalogBlazorApp.Extensions
 											, String.Empty
 										   );
 
-			return onixContent.CleanXml().PrettyPrintXml();
+			return onixContent.CleanXml().PrettyPrintXml().PrepareFinalOnixMessage();
 		}
 
         public static string ToSimpleOnixString(this OnixProduct onixProduct, string headerMsgNote = null)
