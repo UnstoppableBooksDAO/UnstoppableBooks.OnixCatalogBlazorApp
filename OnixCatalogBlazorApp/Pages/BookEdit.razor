@@ -76,7 +76,7 @@
     <p>
         <label>
             Sign with Ethereum:
-            <InputCheckbox @bind-Value="_shouldSignWithMetamask" />
+            <InputCheckbox @bind-Value="_shouldSignWithMetamask" disabled="@EthAccountUnavailable" />
         </label>
     </p>
     <p>
@@ -98,6 +98,7 @@
     public Task<AuthenticationState> AuthenticationState { get; set; }
 
     bool EthereumAvailable { get; set; }
+    bool EthAccountUnavailable { get; set; }
     string SelectedAccount { get; set; }
     int SelectedChainId { get; set; }
     string BlockHash { get; set; }
@@ -136,6 +137,8 @@
         {
             SelectedAccount = await _ethereumHostProvider.GetProviderSelectedAccountAsync();
             await GetChainId();
+
+            EthAccountUnavailable = String.IsNullOrEmpty(SelectedAccount);
         }
 
         var authState = await AuthenticationState; ;
