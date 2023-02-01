@@ -6,9 +6,8 @@ using System.Xml;
 using System.Xml.Linq;
 using Newtonsoft.Json;
 
-using Nethereum.Util;
+using Nethereum.KeyStore.Model;
 using Nethereum.Signer;
-using Nethereum.Hex.HexConvertors.Extensions;
 
 using OnixData.Version3;
 using OnixData.Version3.Names;
@@ -127,7 +126,14 @@ namespace OnixCatalogBlazorApp.Extensions
 			return GenerateGetRequestMessage(bookItem?.Title ?? String.Empty);
 		}
 
-		public static HttpRequestMessage GenerateGetRequestMessage(this string title)
+		public static HttpRequestMessage GenerateGetRequestMessage(this EthECKey ethKey)
+		{
+            var keyStoreUrl = String.Format(@"/onix-keystore/{0}.json", ethKey.GetPublicAddress());
+
+            return new HttpRequestMessage(HttpMethod.Get, keyStoreUrl);
+        }
+
+        public static HttpRequestMessage GenerateGetRequestMessage(this string title)
 		{
 			var bookUrl = String.Format(@"/onix-catalog/{0}.json", title?.Replace(@" ", @"_"));
 
