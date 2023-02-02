@@ -89,9 +89,9 @@ else
     {
         if (!_initializedCatalog)
         {
-            var keys = await CacheStorageProxy.GetAllKeysAsync();
-            foreach (var key in keys) {
-
+            var keys = await CacheStorageProxy.GetAllCatalogKeysAsync();
+            foreach (var key in keys)
+            {
                 var message = new HttpRequestMessage(HttpMethod.Get, key);
 
                 var book = await CacheStorageProxy.GetAsync(message);
