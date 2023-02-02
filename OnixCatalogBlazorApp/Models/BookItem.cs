@@ -15,6 +15,8 @@ namespace OnixCatalogBlazorApp.Models
 
         public string? AuthorEthereumId { get; set; }
 
+        public string? Language { get; set; }
+
         [Range(1, 100000, ErrorMessage = "Accommodation invalid (1-100000).")]
         public decimal? Price { get; set; }
 
@@ -31,6 +33,7 @@ namespace OnixCatalogBlazorApp.Models
             Ean         = 0;
             IsPublished = false;
             DateCreated = DateTime.Now;
+            Language    = "ENG";
         }
 
         public BookItem(long id, bool isPublished, DateTime dateCreated)
@@ -38,6 +41,7 @@ namespace OnixCatalogBlazorApp.Models
             Ean         = id;
             IsPublished = isPublished;
             DateCreated = dateCreated;
+            Language    = "ENG";
         }
     }
 }

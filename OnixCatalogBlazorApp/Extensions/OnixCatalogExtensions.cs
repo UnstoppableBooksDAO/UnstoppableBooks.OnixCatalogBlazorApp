@@ -292,7 +292,7 @@ namespace OnixCatalogBlazorApp.Extensions
 											, "DG"
 											, title
 											, contribList
-											, String.Empty
+											, bookItem?.Language
 											, bookItem?.PrimaryBISAC
 											, bookItem?.Publisher
 											, String.Empty
