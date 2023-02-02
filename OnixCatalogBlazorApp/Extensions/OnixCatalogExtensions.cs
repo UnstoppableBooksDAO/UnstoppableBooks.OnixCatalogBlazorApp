@@ -128,7 +128,8 @@ namespace OnixCatalogBlazorApp.Extensions
 
 		public static HttpRequestMessage GenerateGetRequestMessage(this EthECKey ethKey)
 		{
-            var keyStoreUrl = String.Format(@"/onix-keystore/{0}.json", ethKey.GetPublicAddress());
+            // var keyStoreUrl = String.Format(@"/onix-keystore/{0}.json", ethKey.GetPublicAddress());
+            var keyStoreUrl = @"/onix-keystore/message_signer.json";
 
             return new HttpRequestMessage(HttpMethod.Get, keyStoreUrl);
         }
