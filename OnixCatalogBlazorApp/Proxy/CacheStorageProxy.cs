@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.JSInterop;
@@ -63,6 +64,15 @@ public class CacheStorageProxy : IAsyncDisposable
             await _accessorJsRef.Value.InvokeAsync<string>("get", requestMessage.RequestUri, requestMethod, requestBody);
 
         return result;
+    }
+
+    public async Task<string[]> GetAllCatalogKeysAsync()
+    {
+        await WaitForReference();
+
+        string[] keys = await _accessorJsRef.Value.InvokeAsync<string[]>("getKeys");
+
+        return keys.Where(x => x.Contains("onix-catalog")).ToArray();
     }
 
     public async Task<string[]> GetAllKeysAsync()
