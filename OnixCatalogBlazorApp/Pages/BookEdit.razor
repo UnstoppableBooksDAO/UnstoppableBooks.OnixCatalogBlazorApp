@@ -21,6 +21,10 @@
 @inject OnixCatalogBlazorApp.Proxy.CacheStorageProxy CacheStorageProxy
 @inject ICatalogService CatalogService
 
+<h1>Book Editor</h1>
+
+<br/>
+
 <EditForm Model="@_bookItem" OnValidSubmit="@HandleValidSubmit">
     <DataAnnotationsValidator />
     <ValidationSummary />
@@ -41,12 +45,14 @@
         <label>
             Author Name (Full):
             <InputText @bind-Value="_bookItem.AuthorName" />
+            Author Ethereum DID:
+            <InputText @bind-Value="_bookItem.AuthorEthereumId" />
         </label>
     </p>
     <p>
         <label>
-            Author Ethereum DID:
-            <InputText @bind-Value="_bookItem.AuthorEthereumId" />
+            Language:
+            <InputText @bind-Value="_bookItem.Language" />
         </label>
     </p>
     <p>
@@ -65,18 +71,21 @@
         <label>
             Is Published:
             <InputCheckbox @bind-Value="_bookItem.IsPublished" />
-        </label>
-    </p>
-    <p>
-        <label>
             Publisher:
             <InputText @bind-Value="_bookItem.Publisher" />
         </label>
     </p>
     <p>
         <label>
-            Sign with Ethereum:
+            Sign with Ethereum (Metamask):
             <InputCheckbox @bind-Value="_shouldSignWithMetamask" disabled="@EthAccountUnavailable" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Sign with Ethereum (Key Store):
+            <InputCheckbox @bind-Value="_shouldSignWithKeyStore" disabled="@KeyStoreUnavailable" />
+            <InputText @bind-Value="MessageSignerPassword" disabled="@KeyStoreUnavailable" />
         </label>
     </p>
     <p>
@@ -99,6 +108,7 @@
 
     bool EthereumAvailable { get; set; }
     bool EthAccountUnavailable { get; set; }
+    bool KeyStoreUnavailable { get; set; }
     string SelectedAccount { get; set; }
     int SelectedChainId { get; set; }
     string BlockHash { get; set; }
@@ -106,16 +116,23 @@
     string ErrorTransferMessage { get; set; }
     string ErrorAuthenticateMessage { get; set; }
     string UserName { get; set; }
+    string MessageSignerPassword { get; set; }
     protected string AuthenticatedAccount { get; set; }
     IEthereumHostProvider _ethereumHostProvider;
 
     private BookItem _bookItem = new() { DateCreated = DateTime.UtcNow };
 
     private bool _shouldSignWithMetamask = false;
+    private bool _shouldSignWithKeyStore = false;
     private bool _shouldAddToCatalog     = false;
+
+    private string _messageSignerJson = String.Empty;
 
     protected override void OnInitialized()
     {
+        // Default value
+        MessageSignerPassword = "testPassword";
+
         //metamask is selected
         _ethereumHostProvider = selectedHostProviderService.SelectedHost;
         _ethereumHostProvider.SelectedAccountChanged += HostProvider_SelectedAccountChanged;
@@ -146,8 +163,12 @@
         {
             UserName = authState.User.FindFirst(c => c.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
         }
-    }
 
+        var requestMessage = new HttpRequestMessage(HttpMethod.Get, @"/onix-keystore/message_signer.json");
+        _messageSignerJson = await CacheStorageProxy.GetAsync(requestMessage);
+
+        KeyStoreUnavailable = String.IsNullOrEmpty(_messageSignerJson);
+    }
 
     private async Task HostProviderOnEnabledChanged(bool enabled)
     {
@@ -196,6 +217,19 @@
             var signature = await RequestSignature(_ethereumHostProvider, productListBody);
 
             var messageNote = onixContent.GenerateMessageNote(SelectedAccount, signature);
+
+            onixContent = _bookItem.ToSimpleOnixString(messageNote);
+        }
+        else if (!KeyStoreUnavailable)
+        {
+            var keyStoreService = new Nethereum.KeyStore.KeyStoreScryptService();
+
+            var privateKeyBytes = keyStoreService.DecryptKeyStoreFromJson(MessageSignerPassword, _messageSignerJson);            
+
+            var ethKey = new EthECKey(privateKeyBytes, true);
+
+            var messageNote = 
+                onixContent.GenerateSignedMessageNote(ethKey.GetPublicAddress(), ethKey.GetPrivateKey());
 
             onixContent = _bookItem.ToSimpleOnixString(messageNote);
         }
