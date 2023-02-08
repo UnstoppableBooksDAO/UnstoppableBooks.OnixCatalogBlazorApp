@@ -11,10 +11,15 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="6.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="6.0.2" PrivateAssets="all" />
     <PackageReference Include="Nethereum.Metamask.Blazor" Version="4.6.1" />
+    <PackageReference Include="Nethereum.Optimism" Version="4.6.1" />
     <PackageReference Include="Nethereum.UI" Version="4.6.1" />
 	<PackageReference Include="Nethereum.Web3" Version="4.6.1" />
 	<PackageReference Include="ONIX-Data.Standard" Version="0.5.41" />
     <PackageReference Include="System.Net.Http.Json" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OptimismTemplate\OptimismTemplate\OptimismTemplate.csproj" />
   </ItemGroup>
 
 </Project>

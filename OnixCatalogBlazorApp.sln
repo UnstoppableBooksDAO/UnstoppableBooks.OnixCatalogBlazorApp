@@ -5,6 +5,10 @@ VisualStudioVersion = 17.3.32519.111
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OnixCatalogBlazorApp", "OnixCatalogBlazorApp\OnixCatalogBlazorApp.csproj", "{BBEF0F1B-F19C-4011-A2A2-E84FB1733653}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OptimismTemplate", "OptimismTemplate\OptimismTemplate\OptimismTemplate.csproj", "{4362C71F-B5EE-4B89-93E3-35C6B2500739}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OptimismTemplate.Testing", "OptimismTemplate\OptimismTemplate.Testing\OptimismTemplate.Testing.csproj", "{767F9234-8E17-49B2-8DFA-E2D744F92C11}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{BBEF0F1B-F19C-4011-A2A2-E84FB1733653}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BBEF0F1B-F19C-4011-A2A2-E84FB1733653}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BBEF0F1B-F19C-4011-A2A2-E84FB1733653}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4362C71F-B5EE-4B89-93E3-35C6B2500739}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4362C71F-B5EE-4B89-93E3-35C6B2500739}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4362C71F-B5EE-4B89-93E3-35C6B2500739}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4362C71F-B5EE-4B89-93E3-35C6B2500739}.Release|Any CPU.Build.0 = Release|Any CPU
+		{767F9234-8E17-49B2-8DFA-E2D744F92C11}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{767F9234-8E17-49B2-8DFA-E2D744F92C11}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{767F9234-8E17-49B2-8DFA-E2D744F92C11}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{767F9234-8E17-49B2-8DFA-E2D744F92C11}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

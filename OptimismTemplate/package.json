@@ -1,0 +1,7 @@
+{
+  "name": "optimismtemplate",
+  "dependencies": {
+    "@eth-optimism/contracts": "^0.5.17",
+    "@openzeppelin/contracts": "^4.4.2"
+  }
+}
