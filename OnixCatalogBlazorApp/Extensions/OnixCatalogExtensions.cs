@@ -126,7 +126,14 @@ namespace OnixCatalogBlazorApp.Extensions
 			return GenerateGetRequestMessage(bookItem?.Title ?? String.Empty);
 		}
 
-		public static HttpRequestMessage GenerateGetRequestMessage(this EthECKey ethKey)
+        public static HttpRequestMessage GenerateGetRequestMessage(this DePubNftContractDeployment contractDeployment)
+        {
+            var keyStoreUrl = @"/onix-deploy/nft_contract.json";
+
+            return new HttpRequestMessage(HttpMethod.Get, keyStoreUrl);
+        }
+
+        public static HttpRequestMessage GenerateGetRequestMessage(this EthECKey ethKey)
 		{
             // var keyStoreUrl = String.Format(@"/onix-keystore/{0}.json", ethKey.GetPublicAddress());
             var keyStoreUrl = @"/onix-keystore/message_signer.json";
@@ -246,7 +253,12 @@ namespace OnixCatalogBlazorApp.Extensions
 			return JsonConvert.SerializeObject(bookItem);
 		}
 
-		public static string ToSimpleOnixString(this BookItem bookItem, string headerMsgNote = null)
+        public static string Serialize(this DePubNftContractDeployment deployedContract)
+        {
+            return JsonConvert.SerializeObject(deployedContract);
+        }
+
+        public static string ToSimpleOnixString(this BookItem bookItem, string headerMsgNote = null)
 		{
 			var header      = String.Empty;
 			var title       = String.Empty;
