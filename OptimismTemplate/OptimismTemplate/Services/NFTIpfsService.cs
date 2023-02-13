@@ -33,6 +33,13 @@ namespace OptimismTemplate.Services
             return ipfsClient.AddObjectAsJson(metadata, fileName);
         }
 
+        public async Task<IPFSFileInfo> AddStringToIpfsAsync(string fileContents, string fileName)
+        {
+            var ipfsClient = GetSimpleHttpIpfs();
+            var node = await ipfsClient.AddAsync(UTF8Encoding.UTF8.GetBytes(fileContents), fileName);
+            return node;
+        }
+
         public async Task<IPFSFileInfo> AddFileToIpfsAsync(string path)
         {
             var file = new FileInfo(path);
