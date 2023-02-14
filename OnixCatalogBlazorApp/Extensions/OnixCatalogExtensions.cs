@@ -141,6 +141,13 @@ namespace OnixCatalogBlazorApp.Extensions
             return new HttpRequestMessage(HttpMethod.Get, keyStoreUrl);
         }
 
+        public static HttpRequestMessage GenerateGetRequestMessage(this IpfsCredentialsItem ipfsCredsItem)
+        {
+            var ipfsCredsUrl = @"/onix-ipfs/ipfs_creds.json";
+
+            return new HttpRequestMessage(HttpMethod.Get, ipfsCredsUrl);
+        }
+
         public static HttpRequestMessage GenerateGetRequestMessage(this string title)
 		{
 			var bookUrl = String.Format(@"/onix-catalog/{0}.json", title?.Replace(@" ", @"_"));
@@ -256,6 +263,11 @@ namespace OnixCatalogBlazorApp.Extensions
         public static string Serialize(this DePubNftContractDeployment deployedContract)
         {
             return JsonConvert.SerializeObject(deployedContract);
+        }
+
+        public static string Serialize(this IpfsCredentialsItem ipfsCredsItem)
+        {
+            return JsonConvert.SerializeObject(ipfsCredsItem);
         }
 
         public static string ToSimpleOnixString(this BookItem bookItem, string headerMsgNote = null)
