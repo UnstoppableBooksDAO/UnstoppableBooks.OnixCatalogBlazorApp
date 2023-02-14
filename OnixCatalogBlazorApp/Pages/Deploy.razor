@@ -1,0 +1,377 @@
+﻿@page "/deploy"
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Newtonsoft.Json
+@using System.Security.Claims
+
+@using Nethereum.Contracts
+@using Nethereum.Contracts.Standards.ERC721
+@using Nethereum.Hex.HexTypes
+@using Nethereum.Metamask
+@using Nethereum.Optimism
+@using Nethereum.Signer
+@using Nethereum.UI
+@using Nethereum.Util
+@using Nethereum.Web3
+@using Nethereum.Web3.Accounts
+
+@using OptimismTemplate
+@using OptimismTemplate.Contracts.ERC721EnumerableUriStorage
+@using OptimismTemplate.Contracts.ERC721EnumerableUriStorage.ContractDefinition
+@using OptimismTemplate.Services
+
+@using OnixCatalogBlazorApp.Extensions
+@using OnixCatalogBlazorApp.Models
+@using OnixCatalogBlazorApp.Services
+
+@implements IDisposable
+@inject IJSRuntime jsRuntime
+@inject SelectedEthereumHostProviderService selectedHostProviderService
+@inject NavigationManager _navigationManager
+@inject AuthenticationStateProvider _siweAuthenticationStateProvider
+@inject OnixCatalogBlazorApp.Proxy.CacheStorageProxy CacheStorageProxy
+@inject ICatalogService CatalogService
+
+<h1>Decentralized Publishing (DePub) Deployments</h1>
+
+<br/>
+
+<EditForm Model="@_contractDeployment" OnValidSubmit="@HandleContractDeployment">
+
+    <p>
+        <label>
+            Book Catalog NFT Contract:
+            <InputText @bind-Value="_contractDeployment.NftContractAddress" disabled="true" />
+        </label>
+    </p>
+
+    <button type="submit" disabled="@IsContractDeployed">Deploy</button>
+
+</EditForm>
+
+<br />
+
+@if (_books == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!_books.Any())
+{
+    <p><em>No books exist.  Please add some.</em></p>
+}
+else if (String.IsNullOrEmpty(_contractDeployment.NftContractAddress) && KeyStoreUnavailable)
+{
+    <p><em>NFT Contract not yet deployed.  Please create a KeyStore first (on the Key Store page), after which you will be able to deploy the NFT contract for minting.</em></p>
+}
+else if (String.IsNullOrEmpty(_contractDeployment.NftContractAddress))
+{
+    <p><em>NFT Contract not yet deployed.  Please deploy the contract before minting books in your catalog.</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>
+                    <span class="sort-link" @onclick=@(() => SortTable("Title"))>Title</span>
+                    <span>@(GetSortStyle("Title"))</span>
+                </th>
+                <th>Is Published</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in _books)
+            {
+                <tr>
+                    <td>
+                    @item.Title
+                    <button @onclick="(() => MintCatalogBook(item))">Mint</button>
+                    </td>
+                    <td>
+                        @if (item.IsPublished)
+                        {
+                            <input type=checkbox checked />
+                        }
+                        else
+                        {
+                            <input type=checkbox />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationState { get; set; }
+
+    bool EthereumAvailable { get; set; }
+    bool EthAccountUnavailable { get; set; }
+    bool KeyStoreUnavailable { get; set; }
+    bool IsContractDeployed { get; set; }
+    string SelectedAccount { get; set; }
+    long SelectedChainId { get; set; }
+    string BlockHash { get; set; }
+    string TransactionHash { get; set; }
+    string UserName { get; set; }
+    string MessageSignerPassword { get; set; }
+    IEthereumHostProvider _ethereumHostProvider;
+
+    private bool _isSortedAscending      = false;
+    private bool _shouldSignWithMetamask = false;
+    private bool _shouldAddToCatalog     = false;
+
+    private string _currentSortColumn = String.Empty;
+    private string _messageSignerJson = String.Empty;    
+
+    private DePubNftContractDeployment _contractDeployment = new();
+    private IpfsCredentialsItem        _ipfsCredsItem      = new();
+
+    List<BookItem> _books = new List<BookItem>();
+
+    protected override void OnInitialized()
+    {
+        // Default value
+        MessageSignerPassword = "testPassword";
+
+        //metamask is selected
+        _ethereumHostProvider = selectedHostProviderService.SelectedHost;
+        _ethereumHostProvider.SelectedAccountChanged += HostProvider_SelectedAccountChanged;
+        _ethereumHostProvider.NetworkChanged += HostProvider_NetworkChanged;
+        _ethereumHostProvider.EnabledChanged += HostProviderOnEnabledChanged;
+    }
+
+    public void Dispose()
+    {
+        _ethereumHostProvider.SelectedAccountChanged -= HostProvider_SelectedAccountChanged;
+        _ethereumHostProvider.NetworkChanged -= HostProvider_NetworkChanged;
+        _ethereumHostProvider.EnabledChanged -= HostProviderOnEnabledChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        EthereumAvailable = await _ethereumHostProvider.CheckProviderAvailabilityAsync();
+        if (EthereumAvailable)
+        {
+            SelectedAccount = await _ethereumHostProvider.GetProviderSelectedAccountAsync();
+            await GetChainId();
+
+            EthAccountUnavailable = String.IsNullOrEmpty(SelectedAccount);
+        }
+
+        var authState = await AuthenticationState;
+        if (authState != null)
+        {
+            UserName = authState.User.FindFirst(c => c.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+        }
+
+        var requestKeysoreMessage = new HttpRequestMessage(HttpMethod.Get, @"/onix-keystore/message_signer.json");
+        _messageSignerJson = await CacheStorageProxy.GetAsync(requestKeysoreMessage);
+
+        KeyStoreUnavailable = String.IsNullOrEmpty(_messageSignerJson);
+
+        var keys = await CacheStorageProxy.GetAllCatalogKeysAsync();
+        foreach (var key in keys)
+        {
+            var message = new HttpRequestMessage(HttpMethod.Get, key);
+
+            var book = await CacheStorageProxy.GetAsync(message);
+
+            if (book != null)
+            {
+                BookItem bookItem = JsonConvert.DeserializeObject<BookItem>(book);
+                if (bookItem != null)
+                {
+                    _books.Add(bookItem);
+                }
+            }
+        }
+
+        var requestDeploymentMessage = new HttpRequestMessage(HttpMethod.Get, @"/onix-deploy/nft_contract.json");
+        var requestDeploymentJson    = await CacheStorageProxy.GetAsync(requestDeploymentMessage);
+        if (!String.IsNullOrEmpty(requestDeploymentJson))
+        {
+            _contractDeployment = JsonConvert.DeserializeObject<DePubNftContractDeployment>(requestDeploymentJson);
+        }
+
+        var requestIpfsCredsMessage = new HttpRequestMessage(HttpMethod.Get, @"/onix-ipfs/ipfs_creds.json");
+        var requestIpfsCredsJson    = await CacheStorageProxy.GetAsync(requestIpfsCredsMessage);
+        if (!String.IsNullOrEmpty(requestIpfsCredsJson))
+        {
+            _ipfsCredsItem = JsonConvert.DeserializeObject<IpfsCredentialsItem>(requestIpfsCredsJson);
+        }
+    }
+
+    private async Task HostProviderOnEnabledChanged(bool enabled)
+    {
+        if (enabled)
+        {
+            await GetChainId();
+            this.StateHasChanged();
+        }
+    }
+
+    private async Task GetChainId()
+    {
+        var web3 = await _ethereumHostProvider.GetWeb3Async();
+        var chainId = await web3.Eth.ChainId.SendRequestAsync();
+        SelectedChainId = (int)chainId.Value;
+    }
+
+    private async Task HostProvider_SelectedAccountChanged(string account)
+    {
+        SelectedAccount = account;
+        await GetChainId();
+        this.StateHasChanged();
+    }
+
+    private async Task HostProvider_NetworkChanged(long chainId)
+    {
+        SelectedChainId = chainId;
+        this.StateHasChanged();
+    }
+
+    private string GetSortStyle(string columnName)
+    {
+        if (_currentSortColumn != columnName)
+        {
+            return string.Empty;
+        }
+        if (_isSortedAscending)
+        {
+            return "▲";
+        }
+        else
+        {
+            return "▼";
+        }
+    }
+
+    private async Task HandleContractDeployment()
+    {
+        if (!KeyStoreUnavailable && String.IsNullOrEmpty(_contractDeployment.NftContractAddress))
+        {
+            var keyStoreService = new Nethereum.KeyStore.KeyStoreScryptService();
+
+            var privateKeyBytes = keyStoreService.DecryptKeyStoreFromJson(MessageSignerPassword, _messageSignerJson);
+
+            var ethKey = new EthECKey(privateKeyBytes, true);
+
+            var web3 = new Web3(new Account(ethKey.GetPrivateKey(), 420), "https://goerli.optimism.io");
+            web3.Eth.TransactionManager.UseLegacyAsDefault = true;
+            web3.TransactionReceiptPolling.SetPollingRetryIntervalInMilliseconds(1000);
+
+            // creating our deployment information (this includes the bytecode already)
+            var erc721Deployment = 
+                new ERC721EnumerableUriStorageDeployment() { Name = "Unstoppable Books Catalog", Symbol = "USB" };
+
+            try
+            {
+                //Deploy the erc721Minter
+                var deploymentReceipt =
+                    await ERC721EnumerableUriStorageService.DeployContractAndWaitForReceiptAsync(web3, erc721Deployment);
+
+                _contractDeployment =
+                    new DePubNftContractDeployment()
+                        {
+                            NftContractName = erc721Deployment.Name
+                            , NftContractSymbol = erc721Deployment.Symbol
+                            , NftContractAddress = deploymentReceipt.ContractAddress
+                        };
+
+                var message = _contractDeployment.GenerateGetRequestMessage();
+
+                var response = new HttpResponseMessage(System.Net.HttpStatusCode.Created);
+                response.Content = new StringContent(_contractDeployment.Serialize());
+
+                await CacheStorageProxy.StoreAsync(message, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ERROR!  Could not deploy the NFT contract =>\n(" + ex + ")");
+            }
+        }
+    }
+
+    private async Task MintCatalogBook(BookItem chosenBook)
+    {
+        if (!KeyStoreUnavailable && !String.IsNullOrEmpty(_contractDeployment.NftContractAddress))
+        {
+            var keyStoreService = new Nethereum.KeyStore.KeyStoreScryptService();
+            var privateKeyBytes = keyStoreService.DecryptKeyStoreFromJson(MessageSignerPassword, _messageSignerJson);
+            var ethKey          = new EthECKey(privateKeyBytes, true);
+
+            var onixContent = chosenBook.ToSimpleOnixString();
+            var messageNote = onixContent.GenerateSignedMessageNote(ethKey.GetPublicAddress(), ethKey.GetPrivateKey());
+
+            onixContent = chosenBook.ToSimpleOnixString(messageNote);
+
+            var web3 = new Web3(new Account(ethKey.GetPrivateKey(), 420), "https://goerli.optimism.io");
+            web3.Eth.TransactionManager.UseLegacyAsDefault = true;
+
+            //creating a new service with the new contract address
+            var erc721Service =
+                new ERC721EnumerableUriStorageService(web3, _contractDeployment.NftContractAddress);
+
+            if (!String.IsNullOrEmpty(_ipfsCredsItem.IpfsUrl) && 
+                !String.IsNullOrEmpty(_ipfsCredsItem.IpfsUsername) &&
+                !String.IsNullOrEmpty(_ipfsCredsItem.IpfsPassword))
+            {
+                //uploading to ipfs our image
+                var nftIpfsService =
+                    new NFTIpfsService(_ipfsCredsItem.IpfsUrl, _ipfsCredsItem.IpfsUsername, _ipfsCredsItem.IpfsPassword);
+
+                var imageIpfs =
+                    await nftIpfsService.AddStringToIpfsAsync(onixContent, chosenBook.Title.Replace(" ", "_") + ".xml");
+
+                //adding all our document ipfs links to the metadata and the description
+                var metadataNFT = new NftMetadata()
+                    {
+                        Name = chosenBook.Title
+                        , Image = "ipfs://" + imageIpfs.Hash
+                        // , ExternalUrl = chosenBook.FeaturedUrl
+                    };
+
+                //Adding the metadata to ipfs
+                var metadataIpfs =
+                   await nftIpfsService.AddNftsMetadataToIpfsAsync(metadataNFT, "Metadata.json");
+
+                var addressToRegisterOwnership =
+                   !String.IsNullOrEmpty(chosenBook.AuthorEthereumId) ? chosenBook.AuthorEthereumId : ethKey.GetPublicAddress();
+
+                //Minting the nft with the url to the ipfs metadata
+                var mintReceipt =
+                    await erc721Service.MintRequestAndWaitForReceiptAsync(addressToRegisterOwnership,
+                                                                          "ipfs://" + metadataIpfs.Hash);
+            }
+        }
+    }
+
+    private void SortTable(string columnName)
+    {
+        if (columnName != _currentSortColumn)
+        {
+            //We need to force order by descending on the new column
+            _books = _books.OrderBy(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
+            _currentSortColumn = columnName;
+            _isSortedAscending = true;
+
+        }
+        else //Sorting against same column but in different direction
+        {
+            if (_isSortedAscending)
+            {
+                _books = _books.OrderByDescending(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
+            }
+            else
+            {
+                _books = _books.OrderBy(x => x.GetType().GetProperty(columnName).GetValue(x, null)).ToList();
+            }
+
+            _isSortedAscending = !_isSortedAscending;
+        }
+    }
+}
