@@ -110,7 +110,7 @@
     bool EthAccountUnavailable { get; set; }
     bool KeyStoreUnavailable { get; set; }
     string SelectedAccount { get; set; }
-    int SelectedChainId { get; set; }
+    long SelectedChainId { get; set; }
     string BlockHash { get; set; }
     string TransactionHash { get; set; }
     string ErrorTransferMessage { get; set; }
@@ -193,7 +193,7 @@
         this.StateHasChanged();
     }
 
-    private async Task HostProvider_NetworkChanged(int chainId)
+    private async Task HostProvider_NetworkChanged(long chainId)
     {
         SelectedChainId = chainId;
         this.StateHasChanged();
