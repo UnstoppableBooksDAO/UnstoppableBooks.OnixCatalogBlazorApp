@@ -26,10 +26,13 @@ namespace OnixCatalogBlazorApp.Models
 
         public string? Publisher { get; set; }
 
+        public int NftTokenId { get; set; }
+
         public DateTime DateCreated { get; set; }
 
         public BookItem()
         {
+            NftTokenId  = -1;
             Ean         = 0;
             IsPublished = false;
             DateCreated = DateTime.Now;
@@ -38,6 +41,7 @@ namespace OnixCatalogBlazorApp.Models
 
         public BookItem(long id, bool isPublished, DateTime dateCreated)
         {
+            NftTokenId  = -1;
             Ean         = id;
             IsPublished = isPublished;
             DateCreated = dateCreated;
