@@ -34,6 +34,8 @@
 
 <h1>Decentralized Publishing (DePub) Deployments</h1>
 
+<h6><em style="color:Tomato;">Experimental Mode - Hardwired to deploy to Optimism Goerli</em></h6>
+
 <br/>
 
 <EditForm Model="@_contractDeployment" OnValidSubmit="@HandleContractDeployment">
@@ -45,7 +47,7 @@
         </label>
     </p>
 
-    <button type="submit" disabled="@IsContractDeployed">Deploy</button>
+    <button type="submit" disabled="@IsContractDeployed">Deploy</button>&nbsp;&nbsp;* Deployment (and minting) might take a few seconds.
 
 </EditForm>
 
@@ -84,8 +86,15 @@ else
             {
                 <tr>
                     <td>
-                    @item.Title
-                    <button @onclick="(() => MintCatalogBook(item))">Mint</button>
+                        @item.Title&nbsp;&nbsp;&nbsp;
+                        @if (item.NftTokenId <= 0)
+                        {
+                            <button @onclick="(() => MintCatalogBook(item))">Mint</button>
+                        }
+                        else
+                        {
+                            <span>[NFT ID: @item.NftTokenId]</span>
+                        }
                     </td>
                     <td>
                         @if (item.IsPublished)
@@ -113,6 +122,7 @@ else
     bool KeyStoreUnavailable { get; set; }
     bool IsContractDeployed { get; set; }
     string SelectedAccount { get; set; }
+    int MaxTokenId { get; set; }
     long SelectedChainId { get; set; }
     string BlockHash { get; set; }
     string TransactionHash { get; set; }
@@ -135,6 +145,7 @@ else
     protected override void OnInitialized()
     {
         // Default value
+        MaxTokenId            = -1;
         MessageSignerPassword = "testPassword";
 
         //metamask is selected
@@ -173,22 +184,7 @@ else
 
         KeyStoreUnavailable = String.IsNullOrEmpty(_messageSignerJson);
 
-        var keys = await CacheStorageProxy.GetAllCatalogKeysAsync();
-        foreach (var key in keys)
-        {
-            var message = new HttpRequestMessage(HttpMethod.Get, key);
-
-            var book = await CacheStorageProxy.GetAsync(message);
-
-            if (book != null)
-            {
-                BookItem bookItem = JsonConvert.DeserializeObject<BookItem>(book);
-                if (bookItem != null)
-                {
-                    _books.Add(bookItem);
-                }
-            }
-        }
+        await RefreshCatalog();
 
         var requestDeploymentMessage = new HttpRequestMessage(HttpMethod.Get, @"/onix-deploy/nft_contract.json");
         var requestDeploymentJson    = await CacheStorageProxy.GetAsync(requestDeploymentMessage);
@@ -232,6 +228,34 @@ else
     {
         SelectedChainId = chainId;
         this.StateHasChanged();
+    }
+
+    private async Task<string> GetOwner(BookItem bookItem)
+    {
+        var ownerOfToken = string.Empty;
+
+        if (!KeyStoreUnavailable && !String.IsNullOrEmpty(_contractDeployment.NftContractAddress))
+        {
+            var keyStoreService = new Nethereum.KeyStore.KeyStoreScryptService();
+            var privateKeyBytes = keyStoreService.DecryptKeyStoreFromJson(MessageSignerPassword, _messageSignerJson);
+            var ethKey          = new EthECKey(privateKeyBytes, true);
+
+            var web3 = new Web3(new Account(ethKey.GetPrivateKey(), 420), "https://goerli.optimism.io");
+            web3.Eth.TransactionManager.UseLegacyAsDefault = true;
+
+            //creating a new service with the new contract address
+            var erc721Service =
+                new ERC721EnumerableUriStorageService(web3, _contractDeployment.NftContractAddress);
+
+            if (!String.IsNullOrEmpty(_ipfsCredsItem.IpfsUrl) &&
+                !String.IsNullOrEmpty(_ipfsCredsItem.IpfsUsername) &&
+                !String.IsNullOrEmpty(_ipfsCredsItem.IpfsPassword))
+            {
+                ownerOfToken = await erc721Service.OwnerOfQueryAsync(bookItem.NftTokenId);
+            }
+        }
+
+        return ownerOfToken;
     }
 
     private string GetSortStyle(string columnName)
@@ -324,15 +348,14 @@ else
                 var nftIpfsService =
                     new NFTIpfsService(_ipfsCredsItem.IpfsUrl, _ipfsCredsItem.IpfsUsername, _ipfsCredsItem.IpfsPassword);
 
-                var imageIpfs =
+                var onixIpfs =
                     await nftIpfsService.AddStringToIpfsAsync(onixContent, chosenBook.Title.Replace(" ", "_") + ".xml");
 
                 //adding all our document ipfs links to the metadata and the description
                 var metadataNFT = new NftMetadata()
                     {
                         Name = chosenBook.Title
-                        , Image = "ipfs://" + imageIpfs.Hash
-                        // , ExternalUrl = chosenBook.FeaturedUrl
+                        , ExternalUrl = "ipfs://" + onixIpfs.Hash
                     };
 
                 //Adding the metadata to ipfs
@@ -346,6 +369,46 @@ else
                 var mintReceipt =
                     await erc721Service.MintRequestAndWaitForReceiptAsync(addressToRegisterOwnership,
                                                                           "ipfs://" + metadataIpfs.Hash);
+
+                if (!String.IsNullOrEmpty(mintReceipt.BlockHash))
+                {
+                    chosenBook.NftTokenId = ++MaxTokenId;
+
+                    var message = chosenBook.GenerateGetRequestMessage();
+
+                    var response = new HttpResponseMessage(System.Net.HttpStatusCode.Created);
+                    response.Content = new StringContent(chosenBook.Serialize());
+
+                    await CacheStorageProxy.StoreAsync(message, response);
+                }
+
+            }
+        }
+    }
+
+    private async Task RefreshCatalog()
+    {
+        _books.Clear();
+
+        var keys = await CacheStorageProxy.GetAllCatalogKeysAsync();
+        foreach (var key in keys)
+        {
+            var message = new HttpRequestMessage(HttpMethod.Get, key);
+
+            var book = await CacheStorageProxy.GetAsync(message);
+
+            if (book != null)
+            {
+                BookItem bookItem = JsonConvert.DeserializeObject<BookItem>(book);
+                if (bookItem != null)
+                {
+                    _books.Add(bookItem);
+
+                    if (bookItem.NftTokenId > MaxTokenId)
+                    {
+                        MaxTokenId = bookItem.NftTokenId;
+                    }
+                }
             }
         }
     }
