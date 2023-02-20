@@ -29,3 +29,5 @@ This page showcases the functionality of creating a simple ONIX v3 file that wil
 ![Home](Screenshots/KeyStore.jpg)
 
 This page showcases the functionality of creating a keystore, which can later be used to sign ONIX files that are generated via the Book Editor page.
+
+NOTE: The optional IPFS values are not actually stored as part of the keystore.  They are stored separately in the browser cache and used in the Deploy screen, uploading the ONIX file to IPFS when minting a NFT for a chosen book.
