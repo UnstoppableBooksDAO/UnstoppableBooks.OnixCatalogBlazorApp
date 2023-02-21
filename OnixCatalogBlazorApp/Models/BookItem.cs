@@ -28,6 +28,10 @@ namespace OnixCatalogBlazorApp.Models
 
         public int NftTokenId { get; set; }
 
+        public string? IpfsOnixHash { get; set; }
+
+        public string? IpfsNftMetadataHash { get; set; }
+        
         public DateTime DateCreated { get; set; }
 
         public BookItem()

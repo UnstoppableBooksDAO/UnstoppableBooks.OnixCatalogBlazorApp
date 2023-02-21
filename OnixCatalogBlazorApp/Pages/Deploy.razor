@@ -93,7 +93,7 @@ else
                         }
                         else
                         {
-                            <span>[NFT ID: @item.NftTokenId]</span>
+                            <button @onclick="(() => DownloadNFTData(item))">Download [NFT ID: @item.NftTokenId]</button>
                         }
                     </td>
                     <td>
@@ -124,16 +124,11 @@ else
     string SelectedAccount { get; set; }
     int MaxTokenId { get; set; }
     long SelectedChainId { get; set; }
-    string BlockHash { get; set; }
-    string TransactionHash { get; set; }
     string UserName { get; set; }
     string MessageSignerPassword { get; set; }
     IEthereumHostProvider _ethereumHostProvider;
 
-    private bool _isSortedAscending      = false;
-    private bool _shouldSignWithMetamask = false;
-    private bool _shouldAddToCatalog     = false;
-
+    private bool   _isSortedAscending = false;
     private string _currentSortColumn = String.Empty;
     private string _messageSignerJson = String.Empty;    
 
@@ -228,6 +223,27 @@ else
     {
         SelectedChainId = chainId;
         this.StateHasChanged();
+    }
+
+    private async Task DownloadNFTData(BookItem chosenBook)
+    {
+        try
+        {
+            var nftMetadata = 
+                await NFTIpfsService.GetJsonObjectFromIpfsGateway<NftMetadata>(chosenBook.IpfsNftMetadataHash);
+
+            await CacheStorageProxy.DownloadFile(chosenBook.IpfsNftMetadataHash + ".json",
+                                                 JsonConvert.SerializeObject(nftMetadata));
+
+            var bookXml =
+                await NFTIpfsService.GetStringFromIpfsGateway(nftMetadata.ExternalUrl);
+
+            await CacheStorageProxy.DownloadFile(nftMetadata.ExternalUrl + ".xml", bookXml);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("ERROR!  Could not download the NFT data =>\n(" + ex + ")");
+        }
     }
 
     private async Task<string> GetOwner(BookItem bookItem)
@@ -351,16 +367,21 @@ else
                 var onixIpfs =
                     await nftIpfsService.AddStringToIpfsAsync(onixContent, chosenBook.Title.Replace(" ", "_") + ".xml");
 
+                chosenBook.IpfsOnixHash = onixIpfs.Hash;
+
                 //adding all our document ipfs links to the metadata and the description
                 var metadataNFT = new NftMetadata()
                     {
                         Name = chosenBook.Title
-                        , ExternalUrl = "ipfs://" + onixIpfs.Hash
+                        // , ExternalUrl = "ipfs://" + chosenBook.IpfsOnixHash
+                        , ExternalUrl = chosenBook.IpfsOnixHash
                     };
 
                 //Adding the metadata to ipfs
                 var metadataIpfs =
                    await nftIpfsService.AddNftsMetadataToIpfsAsync(metadataNFT, "Metadata.json");
+
+                chosenBook.IpfsNftMetadataHash = metadataIpfs.Hash;
 
                 var addressToRegisterOwnership =
                    !String.IsNullOrEmpty(chosenBook.AuthorEthereumId) ? chosenBook.AuthorEthereumId : ethKey.GetPublicAddress();
@@ -368,7 +389,7 @@ else
                 //Minting the nft with the url to the ipfs metadata
                 var mintReceipt =
                     await erc721Service.MintRequestAndWaitForReceiptAsync(addressToRegisterOwnership,
-                                                                          "ipfs://" + metadataIpfs.Hash);
+                                                                          chosenBook.IpfsNftMetadataHash);
 
                 if (!String.IsNullOrEmpty(mintReceipt.BlockHash))
                 {
