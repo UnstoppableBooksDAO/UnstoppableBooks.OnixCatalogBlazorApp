@@ -194,23 +194,23 @@ namespace OnixCatalogBlazorApp.Extensions
             if (!String.IsNullOrEmpty(onixContent))
             {
                 var startTag = String.Empty;
-                var endTag = String.Empty;
+                var endTag   = String.Empty;
 
                 if (onixContent.Contains(StartProductRefTag) && onixContent.Contains(EndProductRefTag))
                 {
                     startTag = StartProductRefTag;
-                    endTag = EndProductRefTag;
+                    endTag   = EndProductRefTag;
                 }
                 else if (onixContent.Contains(StartProductShortTag) && onixContent.Contains(EndProductShortTag))
                 {
                     startTag = StartProductShortTag;
-                    endTag = EndProductShortTag;
+                    endTag   = EndProductShortTag;
                 }
 
                 if (!String.IsNullOrEmpty(startTag))
                 {
                     var productListIdx = onixContent.IndexOf(startTag);
-                    var productListLen = (onixContent.IndexOf(endTag) - productListIdx) + endTag.Length;
+                    var productListLen = (onixContent.LastIndexOf(endTag) - productListIdx) + endTag.Length;
 
                     productList = onixContent.Substring(productListIdx, productListLen);
                 }
