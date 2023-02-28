@@ -107,21 +107,39 @@ namespace OnixCatalogBlazorApp.Extensions
 		public const string Onix3BasicCntbPersonNameFormat =
 @"                <PersonName>{0}</PersonName>";
 
-		private const string SignedProductListMessageNoteFormat =
-@"The Product list of this message was signed with the private key of did:ethr:{0}, resulting in the signature({1}).";
+        public const string DidEthPrefix = "did:ethr:";
 
-		private const string StartProductRefTag   = "<Product";
-		private const string StartProductShortTag = "<product";
+        public const string SignedProductListMessageNoteFormatStart =
+@"The Product list of this message was signed with the private key of did:ethr:";
 
-		private const string EndProductRefTag   = "</Product>";
-		private const string EndProductShortTag = "</product>";
+        public const string SignedProductListMessageNoteFormat =
+SignedProductListMessageNoteFormatStart + @"{0}, resulting in the signature({1}).";
+
+        public const string StartProductRefTag   = "<Product";
+        public const string StartProductShortTag = "<product";
+
+        public const string EndProductRefTag   = "</Product>";
+        public const string EndProductShortTag = "</product>";
 
 		public static string CleanXml(this string xmlContent)
         {
 			return xmlContent.Replace("\r\n", String.Empty).Replace("\t", "  ");
 		}
 
-		public static HttpRequestMessage GenerateGetRequestMessage(this BookItem bookItem)
+        public static bool DetectMsgNoteEthereumSignature(this OnixMessage onixMessage)
+        {
+            bool containsEthereumSignature = false;
+
+            if ((onixMessage.Header != null) && !String.IsNullOrEmpty(onixMessage.Header.MessageNote))
+            {
+                containsEthereumSignature =
+                    onixMessage.Header.MessageNote.StartsWith(SignedProductListMessageNoteFormatStart);
+            }
+
+            return containsEthereumSignature;
+        }
+
+        public static HttpRequestMessage GenerateGetRequestMessage(this BookItem bookItem)
 		{
 			return GenerateGetRequestMessage(bookItem?.Title ?? String.Empty);
 		}
@@ -384,6 +402,47 @@ namespace OnixCatalogBlazorApp.Extensions
                                 );
 
         }
+
+        public static bool ValidateMsgNoteEthereumSignature(this OnixMessage onixMessage, string rawOnixContent)
+        {
+            bool validEthereumSignature = false;
+
+            if (onixMessage.DetectMsgNoteEthereumSignature())
+            {
+                var messageNote = onixMessage.Header.MessageNote;
+                var didEthIndex = messageNote.IndexOf(DidEthPrefix);
+                
+                if (didEthIndex > 0)
+                {
+                    var sigEthStartIndex = messageNote.IndexOf("(", didEthIndex);
+                    var sigEthEndIndex   = messageNote.IndexOf(")", sigEthStartIndex);
+
+                    if (sigEthEndIndex > sigEthStartIndex)
+                    {
+                        var signer = new EthereumMessageSigner();
+
+                        var ethPublicAddrStartIdx = didEthIndex + DidEthPrefix.Length;
+
+                        var ethereumPublicAddress =
+                            messageNote.Substring(ethPublicAddrStartIdx, 
+                                                  (messageNote.IndexOf(",", didEthIndex) - ethPublicAddrStartIdx)).Trim();
+
+                        var ethereumSignature =
+                            messageNote.Substring(sigEthStartIndex + 1, (sigEthEndIndex - sigEthStartIndex - 1)).Trim();
+
+                        string productList = rawOnixContent.GetProductList();
+
+                        // Validate the address
+                        var addressRecovered = signer.EncodeUTF8AndEcRecover(productList, ethereumSignature);
+
+                        validEthereumSignature = (ethereumPublicAddress == addressRecovered);
+                    }
+                }
+            }
+
+            return validEthereumSignature;
+        }
+
     }
 
 }
