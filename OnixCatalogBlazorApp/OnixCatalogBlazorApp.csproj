@@ -14,7 +14,7 @@
     <PackageReference Include="Nethereum.Optimism" Version="4.12.0" />
     <PackageReference Include="Nethereum.UI" Version="4.12.0" />
 	<PackageReference Include="Nethereum.Web3" Version="4.12.0" />
-	<PackageReference Include="ONIX-Data.Standard" Version="0.5.41" />
+	<PackageReference Include="ONIX-Data.Standard" Version="0.5.51" />
     <PackageReference Include="System.Net.Http.Json" Version="6.0.0" />
   </ItemGroup>
 
